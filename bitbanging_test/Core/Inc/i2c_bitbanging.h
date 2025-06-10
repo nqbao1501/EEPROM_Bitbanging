@@ -23,13 +23,7 @@
 #define SDA_READ	((GPIOB->IDR & GPIO_IDR_ID11) != 0)
 #define SCL_READ 	((GPIOB->IDR & GPIO_IDR_ID10) != 0)
 
-#define t_LOW		5
-#define t_HIGH		5
-#define t_SU_STA	5
-#define t_HD_STA	5
-#define t_SU_STOP	1
-#define t_BUF		5
-#define t_SU_DAT	1
+
 
 void I2C_Start();
 void I2C_Stop();
