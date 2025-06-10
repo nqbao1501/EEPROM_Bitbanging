@@ -1,0 +1,6 @@
+../Core/Inc/microsecond_delay.h:14:22:DWT_Delay_us	32	static
+../Core/Src/24C256_bitbanging.c:14:9:EEPROM_byte_write	32	static
+../Core/Src/24C256_bitbanging.c:37:9:EEPROM_random_read	32	static
+../Core/Src/24C256_bitbanging.c:56:9:EEPROM_write_string	56	static
+../Core/Src/24C256_bitbanging.c:113:6:UART_Receive_String_Blocking	16	static
+../Core/Src/24C256_bitbanging.c:148:6:process_UART_command	1552	static

@@ -1,0 +1,7 @@
+../Core/Inc/microsecond_delay.h:14:22:DWT_Delay_us	2
+../Core/Src/i2c_bitbanging.c:10:6:I2C_Start	1
+../Core/Src/i2c_bitbanging.c:21:6:I2C_Stop	1
+../Core/Src/i2c_bitbanging.c:31:16:I2C_Write_Byte	3
+../Core/Src/i2c_bitbanging.c:53:9:I2C_Master_Transmit	5
+../Core/Src/i2c_bitbanging.c:74:16:I2C_Receive_Byte	3
+../Core/Src/i2c_bitbanging.c:103:9:I2C_Master_Receive	4
