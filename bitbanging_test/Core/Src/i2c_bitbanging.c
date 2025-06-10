@@ -12,11 +12,11 @@ void I2C_Start(){
 	SCL_SET;
 	//DWT_Delay_us(1);
 	SDA_SET;
-	DWT_Delay_us(t_SU_STA);
+	DWT_Delay_us(5);
 	SDA_CLEAR;
-	DWT_Delay_us(t_HD_STA);
+	DWT_Delay_us(5);
 	SCL_CLEAR;
-	DWT_Delay_us(t_LOW);
+	DWT_Delay_us(5);
 
 }
 void I2C_Stop(){
@@ -24,31 +24,31 @@ void I2C_Stop(){
 	SDA_CLEAR;
 
 	SCL_SET;
-	DWT_Delay_us(t_SU_STOP);
+	DWT_Delay_us(5);
 	SDA_SET;
-	DWT_Delay_us(t_BUF);
+	DWT_Delay_us(5);
 }
 
 static uint8_t I2C_Write_Byte(uint8_t data){
 	for (int i = 7; i >= 0; i--){
 		if (data & (1<<i))SDA_SET;
 		else SDA_CLEAR;
-		DWT_Delay_us(t_SU_DAT);
+		DWT_Delay_us(1);
 
 		SCL_SET;
-		DWT_Delay_us(t_HIGH);
+		DWT_Delay_us(5);
 		SCL_CLEAR;
-		DWT_Delay_us(t_LOW);
+		DWT_Delay_us(5);
 	}
 
 	//poll for ark from slave
 	SDA_SET;
 	//DWT_Delay_us(1);
 	SCL_SET;
-	DWT_Delay_us(t_HIGH);
+	DWT_Delay_us(5);
 	uint8_t ack = !(SDA_READ);
 	SCL_CLEAR;
-	DWT_Delay_us(t_LOW);
+	DWT_Delay_us(5);
 	return ack;
 
 }
@@ -80,9 +80,9 @@ static uint8_t I2C_Receive_Byte(uint8_t ack){
 	for (uint8_t i = 0; i<8; i++){
 		received_byte <<= 1;
 		SCL_CLEAR;
-		DWT_Delay_us(t_HIGH);
+		DWT_Delay_us(5);
 		SCL_SET;
-		DWT_Delay_us(t_LOW);
+		DWT_Delay_us(5);
 		received_byte |= SDA_READ;
 	}
 	//send ack/nack
@@ -94,9 +94,9 @@ static uint8_t I2C_Receive_Byte(uint8_t ack){
 
 
 	SCL_SET;
-	DWT_Delay_us(t_HIGH);
+	DWT_Delay_us(5);
 	SCL_CLEAR;
-	DWT_Delay_us(t_LOW);
+	DWT_Delay_us(5);
 
 	SDA_MODE_INPUT();
 	return received_byte;
