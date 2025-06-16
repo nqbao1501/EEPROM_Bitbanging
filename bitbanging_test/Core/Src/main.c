@@ -78,7 +78,6 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -101,10 +100,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    /* USER CODE END WHILE */
 	  UART_Receive_String_Blocking();
 	  process_UART_command();
-    /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
 
 
@@ -118,45 +116,50 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+	  // Reset RCC to default state
+	  RCC->CR |= RCC_CR_HSION;
+	  RCC->CFGR = 0x00000000;
+	  RCC->CR &= ~(RCC_CR_HSEON | RCC_CR_CSSON | RCC_CR_PLLON);
+	  RCC->CR &= ~RCC_CR_HSEBYP;
+	  RCC->CIR = 0x00000000;
 
-  /** Configure the main internal regulator output voltage
-  */
-  __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+	  // Enable Power Interface clock
+	  RCC->APB1ENR |= RCC_APB1ENR_PWREN;
 
-  /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 168;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 7;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	  // Configure voltage scaling
+	  PWR->CR |= PWR_CR_VOS;
 
-  /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+	  // Enable HSE and wait for it to be ready
+	  RCC->CR |= RCC_CR_HSEBYP | RCC_CR_HSEON;
+	  while(!(RCC->CR & RCC_CR_HSERDY));
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	  // Configure Flash prefetch and latency
+	  FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_ICEN | FLASH_ACR_DCEN | FLASH_ACR_LATENCY_5WS;
+
+	  // Configure PLL
+	  RCC->PLLCFGR = (4 << RCC_PLLCFGR_PLLM_Pos) |    // PLLM = 4
+	                 (168 << RCC_PLLCFGR_PLLN_Pos) |   // PLLN = 168
+	                 (0 << RCC_PLLCFGR_PLLP_Pos) |     // PLLP = 2 (0 means divide by 2)
+	                 (7 << RCC_PLLCFGR_PLLQ_Pos) |     // PLLQ = 7
+	                 RCC_PLLCFGR_PLLSRC_HSE;           // HSE as PLL source
+
+	  // Enable PLL and wait for it to be ready
+	  RCC->CR |= RCC_CR_PLLON;
+	  while(!(RCC->CR & RCC_CR_PLLRDY));
+
+	  // Configure clock dividers
+	  RCC->CFGR = (0 << RCC_CFGR_HPRE_Pos) |    // AHB prescaler = 1
+	              (4 << RCC_CFGR_PPRE1_Pos) |    // APB1 prescaler = 4
+	              (2 << RCC_CFGR_PPRE2_Pos);     // APB2 prescaler = 2
+
+	  // Switch to PLL as system clock
+	  RCC->CFGR |= RCC_CFGR_SW_PLL;
+	  while((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL);
+
+	  // Update SystemCoreClock variable
+	  SystemCoreClock = 168000000;
 }
+
 
 /**
   * @brief GPIO Initialization Function
@@ -165,42 +168,37 @@ void SystemClock_Config(void)
   */
 static void MX_GPIO_Init(void)
 {
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+    // Enable GPIO Ports Clock
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;  // Enable GPIOA clock
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;  // Enable GPIOB clock
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOHEN;  // Enable GPIOH clock
 
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
+    // Configure PA2 (Output Push Pull)
+    GPIOA->MODER &= ~(3 << (2 * 2));      // Clear mode bits
+    GPIOA->MODER |= (1 << (2 * 2));       // Set as output
+    GPIOA->OTYPER &= ~(1 << 2);           // Push-pull
+    GPIOA->OSPEEDR &= ~(3 << (2 * 2));    // Clear speed bits
+    GPIOA->OSPEEDR |= (2 << (2 * 2));     // High speed
+    GPIOA->PUPDR &= ~(3 << (2 * 2));      // No pull-up/pull-down
+    GPIOA->BSRR = (1 << 2);               // Set PA2 high
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET);
+    // Configure PA3 (Input)
+    GPIOA->MODER &= ~(3 << (3 * 2));      // Clear mode bits
+    GPIOA->PUPDR &= ~(3 << (3 * 2));      // No pull-up/pull-down
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10|GPIO_PIN_11, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : PA2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PA3 */
-  GPIO_InitStruct.Pin = GPIO_PIN_3;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PB10 PB11 */
-  GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_11;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+    // Configure PB10 and PB11 (Open Drain Output)
+    GPIOB->MODER &= ~(3 << (10 * 2));     // Clear mode bits for PB10
+    GPIOB->MODER |= (1 << (10 * 2));      // Set PB10 as output
+    GPIOB->MODER &= ~(3 << (11 * 2));     // Clear mode bits for PB11
+    GPIOB->MODER |= (1 << (11 * 2));      // Set PB11 as output
+    GPIOB->OTYPER |= (1 << 10) | (1 << 11); // Open-drain
+    GPIOB->OSPEEDR &= ~(3 << (10 * 2));   // Clear speed bits
+    GPIOB->OSPEEDR |= (2 << (10 * 2));    // High speed
+    GPIOB->OSPEEDR &= ~(3 << (11 * 2));   // Clear speed bits
+    GPIOB->OSPEEDR |= (2 << (11 * 2));    // High speed
+    GPIOB->PUPDR &= ~(3 << (10 * 2));     // No pull-up/pull-down
+    GPIOB->PUPDR &= ~(3 << (11 * 2));     // No pull-up/pull-down
+    GPIOB->BSRR = (1 << 10) | (1 << 11);  // Set PB10 and PB11 low
 }
 
 /* USER CODE BEGIN 4 */
