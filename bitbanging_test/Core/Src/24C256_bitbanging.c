@@ -13,7 +13,6 @@ extern uint8_t external_msg[20];
 
 uint8_t EEPROM_byte_write(uint16_t DevAddress, uint16_t MemAddress, uint8_t *pData, uint16_t len){
 	uint8_t returnValue;
-
 	uint8_t *buffer;
 	buffer = (uint8_t *)malloc(len + 2);
 
@@ -59,7 +58,6 @@ uint8_t EEPROM_write_string(uint16_t DevAddress, uint16_t MemAddress, uint8_t *p
 	uint16_t addr_quotient = MemAddress / 64;
 	uint16_t addr_remainder = MemAddress % 64;
 	uint8_t returnValue;
-
 	//Nếu địa chỉ viết bắt đầu chia hết cho 64 byte -> cứ viết từng chunk 64 byte đến khi nào hết thì thôi.
 	if (addr_remainder == 0)
 	{
@@ -115,9 +113,13 @@ void UART_Receive_String_Blocking(void){
 	string_ready_flag = 0;
 	memset(uart_rx_buffer, 0, UART_RX_BUFFER_SIZE);
 	while(1){
+
+		//đọc từng byte ký tự được nhập vào và echo lên terminal.
 		uint8_t current_byte;
 		UART_Receive(&current_byte, 1);
 		UART_Transmit(&current_byte, 1);
+
+		//xử lý phím enter -> hoàn thành lệnh.
 		if (current_byte == '\r' || current_byte == '\n'){
 			char newline[] = "\r\n";
 			UART_Transmit((uint8_t*)newline, strlen(newline));
@@ -127,37 +129,28 @@ void UART_Receive_String_Blocking(void){
 			break;
 		}
 
+		//Xử lý phím backspace/delete.
 		else if (current_byte == '\b' || current_byte == 127){
 			if (uart_rx_buffer_index > 0){
 				uart_rx_buffer_index--;
 				uart_rx_buffer[uart_rx_buffer_index] = '\0';
-				char back_space[] = "\b \b";
+				char back_space[] = " \b";
 				UART_Transmit((uint8_t*) back_space, strlen(back_space));
 			}
 			continue;
 		}
 
+		//Nhập vào ký tự bình thường vào mảng để xử lý sau.
 		else if (uart_rx_buffer_index < UART_RX_BUFFER_SIZE-1){
 			uart_rx_buffer[uart_rx_buffer_index++] = current_byte;
-
 		}
-
 	}
 }
 
 void process_UART_command(){
 	if (!string_ready_flag) return;
 	string_ready_flag = 0;
-	/*
-	 * Những thành phần của 1 lệnh bao gồm
-	 * - Tên lệnh : WRITE, READ
-	 * - Địa chỉ của EEPROM: 0xA0, 0xA1, ...
-	 * - Địa chỉ bắt đầu đọc/ viết trong EEPROM: 0x1234
-	 * - Nội dung viết: "lmasdsads"
-	 * hoặc
-	 * - Số byte đọc: 100
-	 * -> với tất cả mọi lệnh, đều có thể tách thành 4 phần tử (vd: WRITE 0xA0 0x1234 "day la viet thu" hoặc READ 0xA0 0x1234 8
-	 */
+
 	char command_name[10];
 	char dev_address[10];
 	char mem_address[10];
@@ -167,11 +160,9 @@ void process_UART_command(){
 
 	int initial_parsing = sscanf(command_string, "%s %s %s", command_name, dev_address, mem_address);
 	if (initial_parsing == 3){
-		uint16_t dev_address_int;
-		uint16_t mem_address_int;
+		uint16_t dev_address_int = (uint16_t) strtoul(dev_address, NULL, 0);
+		uint16_t mem_address_int = (uint16_t) strtoul(mem_address, NULL, 0);
 
-		dev_address_int = (uint16_t) strtoul(dev_address, NULL, 0);
-		mem_address_int = (uint16_t) strtoul(mem_address, NULL, 0);
 		if (strcmp("WRITE", command_name) == 0){
 			char temp_cmd[10], temp_dev[10], temp_mem[10];
 			int complete_parse = sscanf(command_string, "%s %s %s \"%399[^\"]\"", temp_cmd, temp_dev, temp_mem, fourth_part);
@@ -182,10 +173,21 @@ void process_UART_command(){
 
 				uint8_t write_status = EEPROM_write_string(dev_address_int, mem_address_int, msg, msg_len);
 
-				if (write_status != 1) return;
+				if (write_status != 1) {
+					char* error_msg = "Ghi eeprom that bai\r\n";
+					UART_Transmit((uint8_t*)error_msg, strlen(error_msg));
+					return;
+				}
+				else{
+					char* error_msg = "Ghi eeprom thanh cong\r\n";
+					UART_Transmit((uint8_t*)error_msg, strlen(error_msg));
+					return;
+				}
 			}
 			else{
-				//Write command thieu parameter
+				// Write command thiếu parameter
+				char* error_msg = "Lenh WRITE thieu tham so hoac thieu dau ngoac kep\r\n";
+				UART_Transmit((uint8_t*)error_msg, strlen(error_msg));
 				return;
 			}
 		}
@@ -193,28 +195,41 @@ void process_UART_command(){
 			char temp_cmd[10], temp_dev[10], temp_mem[10];
 			int complete_parse = sscanf(command_string, "%s %s %s %s", temp_cmd, temp_dev, temp_mem, fourth_part);
 			if (complete_parse == 4){
-
 				uint16_t num_bytes_to_read = (uint16_t)strtoul(fourth_part, NULL, 0);
 				uint8_t msg[500];
-				uint8_t write_status = EEPROM_random_read(dev_address_int, mem_address_int, msg, num_bytes_to_read);
+				uint8_t read_status = EEPROM_random_read(dev_address_int, mem_address_int, msg, num_bytes_to_read);
+				if (read_status != 1){
+					char* error_msg = "Doc eeprom that bai\r\n";
+					UART_Transmit((uint8_t*)error_msg, strlen(error_msg));
+					return;
+				}
 				UART_Transmit(msg, num_bytes_to_read);
+				char* xuong_dong = "\r\n";
+				UART_Transmit((uint8_t*)xuong_dong, strlen(xuong_dong));
 			}
 			else{
-				//Write command thieu parameter
+				// Read command thiếu parameter
+				char* error_msg = "Lenh READ thieu tham so\r\n";
+				UART_Transmit((uint8_t*)error_msg, strlen(error_msg));
 				return;
 			}
-
 		}
 		else{
-			//Lỗi do lệnh sai
+			// Lỗi do lệnh sai
+			char* error_msg = "Lenh khong hop le, chi ho tro READ va WRITE\r\n";
+			UART_Transmit((uint8_t*)error_msg, strlen(error_msg));
 			return;
 		}
 	}
 	else{
-		//Lỗi do không đủ phần tử trong lệnh
+		// Lỗi do không đủ phần tử trong lệnh
+		char* error_msg = "Cau truc lenh sai, yeu cau 4 tham so\r\n";
+		UART_Transmit((uint8_t*)error_msg, strlen(error_msg));
 		return;
 	}
-
-
-
 }
+
+
+
+
+
