@@ -23,6 +23,27 @@
 #define SDA_READ	((GPIOB->IDR & GPIO_IDR_ID11) != 0)
 #define SCL_READ 	((GPIOB->IDR & GPIO_IDR_ID10) != 0)
 
+#define I2C_STANDARD_MODE
+//#define I2C_FAST_MODE
+
+#ifdef I2C_STANDARD_MODE
+#define t_LOW		5 		//min 4.7us
+#define t_HIGH		4 		//min 4us
+#define t_SU_STA	5 		//min 4.7us
+#define t_HD_STA	4 		//min 4us
+#define t_SU_STO	4 		//min 4us
+#define t_BUF		5 		//min 4.7us
+#define t_SU_DAT	1 		//min 250ns 	-> dùng DWT_Delay_cycles(1)
+
+#else
+#define t_LOW		1		//min 1300ns	-> dùng DWT_Delay_us(1) do nó thực tế là delay 1.3us
+#define t_HIGH		60 		//min 600ns 	-> dùng DWT_Delay_cycles(60)
+#define t_SU_STA	60 		//min 600ns 	-> dùng DWT_Delay_cycles(60)
+#define t_HD_STA	60 		//min 600ns 	-> dùng DWT_Delay_cycles(60)
+#define t_SU_STO	60 		//min 600ns 	-> dùng DWT_Delay_cycles(60)
+#define t_BUF		1 		//min 1300ns	-> dùng DWT_Delay_us(1) do nó thực tế là delay 1.3us
+#define t_SU_DAT	1 		//min 100ns 	-> dùng DWT_Delay_cycles(1)
+#endif
 
 
 void I2C_Start();
