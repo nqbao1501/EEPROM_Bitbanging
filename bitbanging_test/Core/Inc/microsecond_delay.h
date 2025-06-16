@@ -11,13 +11,19 @@
 
 uint32_t DWT_Delay_Init(void);
 
-__STATIC_INLINE void DWT_Delay_us(volatile uint32_t au32_microseconds)
+__STATIC_INLINE void DWT_Delay_us(uint32_t microseconds)
 {
-  uint32_t au32_initial_ticks = DWT->CYCCNT;
-  uint32_t ticks_per_us = (HAL_RCC_GetHCLKFreq() / 1000000U);
-  uint32_t target_ticks = au32_microseconds * ticks_per_us;
+  uint32_t initial_ticks = DWT->CYCCNT;
+  uint32_t ticks_per_us = (SystemCoreClock / 1000000U);
+  uint32_t target_ticks = microseconds * ticks_per_us;
 
-  while ((DWT->CYCCNT - au32_initial_ticks) < target_ticks);
+  while ((DWT->CYCCNT - initial_ticks) < target_ticks);
+}
+
+__STATIC_INLINE void DWT_Delay_cycles(uint32_t cycles)
+{
+  uint32_t initial_ticks = DWT->CYCCNT;
+  while ((DWT->CYCCNT - initial_ticks) < cycles);
 }
 
 #endif /* INC_MICROSECOND_DELAY_H_ */
